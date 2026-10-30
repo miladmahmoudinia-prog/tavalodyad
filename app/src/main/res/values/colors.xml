@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_700">#6A1B9A</color>
+    <color name="purple_100">#E1BEE7</color>
+    <color name="pink_500">#E91E63</color>
+    <color name="pink_700">#C2185B</color>
+    <color name="surface_soft">#FFF8FC</color>
+    <color name="card_stroke">#F0E3EF</color>
+    <color name="text_primary">#241B24</color>
+    <color name="text_secondary">#716872</color>
+    <color name="error">#B00020</color>
+</resources>
