@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.TavalodYad" parent="Theme.TavalodYad">
+    <style name="Theme.TavalodYad" parent="Base.Theme.TavalodYad">
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
