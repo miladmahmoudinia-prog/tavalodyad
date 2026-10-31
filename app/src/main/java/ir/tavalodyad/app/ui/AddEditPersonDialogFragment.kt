@@ -3,9 +3,11 @@ package ir.tavalodyad.app.ui
 import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
-import com.google.android.material.textfield.TextInputEditText
 import ir.tavalodyad.app.data.Person
 import ir.tavalodyad.app.databinding.DialogPersonBinding
 import ir.tavalodyad.app.util.PersianCalendarUtils
@@ -20,9 +22,28 @@ class AddEditPersonDialogFragment : DialogFragment() {
         val existing = initial
         val today = PersianCalendarUtils.getTodayJalali()
         binding.inputName.setText(existing?.name.orEmpty())
-        binding.inputYear.setText((existing?.jYear ?: today.first).toString())
-        binding.inputMonth.setText((existing?.jMonth ?: today.second).toString())
-        binding.inputDay.setText((existing?.jDay ?: today.third).toString())
+        val years = ((today.first) downTo (today.first - 120)).toList()
+        val ctx = requireContext()
+        fun sp(items: List<String>) = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, items)
+        binding.spinYear.adapter = sp(years.map { PersianCalendarUtils.toPersianDigits(it) })
+        binding.spinMonth.adapter = sp(PersianCalendarUtils.monthNames.toList())
+        fun fillDays(keep: Int) {
+            val y = years[binding.spinYear.selectedItemPosition]
+            val len = PersianCalendarUtils.jalaliMonthLength(y, binding.spinMonth.selectedItemPosition + 1)
+            binding.spinDay.adapter = sp((1..len).map { PersianCalendarUtils.toPersianDigits(it) })
+            binding.spinDay.setSelection((keep.coerceIn(1, len)) - 1)
+        }
+        binding.spinYear.setSelection(years.indexOf(existing?.jYear ?: (today.first - 20)).coerceAtLeast(0))
+        binding.spinMonth.setSelection((existing?.jMonth ?: 1) - 1)
+        fillDays(existing?.jDay ?: 1)
+        val listener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                fillDays(binding.spinDay.selectedItemPosition + 1)
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+        binding.spinYear.onItemSelectedListener = listener
+        binding.spinMonth.onItemSelectedListener = listener
         binding.inputNote.setText(existing?.note.orEmpty())
         val dialog = AlertDialog.Builder(requireContext())
             .setTitle(if (existing == null) "افزودن تولد" else "ویرایش مشخصات")
@@ -35,11 +56,10 @@ class AddEditPersonDialogFragment : DialogFragment() {
                 try {
                     val name = binding.inputName.text?.toString()?.trim().orEmpty()
                     require(name.isNotEmpty()) { "نام را وارد کنید" }
-                    val y = binding.inputYear.readInt("سال")
-                    val m = binding.inputMonth.readInt("ماه")
-                    val d = binding.inputDay.readInt("روز")
-                    require(y in (today.first - 120)..today.first) { "سال تولد باید بین ۱۲۰ سال گذشته تا سال جاری باشد" }
-                    require(m in 1..12 && d in 1..PersianCalendarUtils.jalaliMonthLength(y, m)) { "تاریخ شمسی معتبر نیست" }
+                    val y = years[binding.spinYear.selectedItemPosition]
+                    val m = binding.spinMonth.selectedItemPosition + 1
+                    val d = binding.spinDay.selectedItemPosition + 1
+                    require(d in 1..PersianCalendarUtils.jalaliMonthLength(y, m)) { "تاریخ شمسی معتبر نیست" }
                     onSave?.invoke(Person(existing?.id ?: 0L, name, y, m, d, binding.inputNote.text?.toString()?.trim()?.ifEmpty { null }))
                     dialog.dismiss()
                 } catch (e: Exception) {
@@ -50,5 +70,4 @@ class AddEditPersonDialogFragment : DialogFragment() {
         }
         return dialog
     }
-    private fun TextInputEditText.readInt(label: String): Int = text?.toString()?.trim()?.toIntOrNull() ?: error("$label را درست وارد کنید")
 }
