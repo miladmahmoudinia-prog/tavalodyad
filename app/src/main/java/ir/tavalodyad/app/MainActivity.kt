@@ -15,6 +15,7 @@ import ir.tavalodyad.app.data.Person
 import ir.tavalodyad.app.databinding.ActivityMainBinding
 import ir.tavalodyad.app.ui.AddEditPersonDialogFragment
 import ir.tavalodyad.app.ui.PersonAdapter
+import ir.tavalodyad.app.util.GreetingMessages
 import ir.tavalodyad.app.util.PersianCalendarUtils
 import ir.tavalodyad.app.util.sortPeopleByBirthday
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,10 @@ class MainActivity : AppCompatActivity() {
         binding.peopleList.layoutManager = LinearLayoutManager(this)
         binding.peopleList.adapter = adapter
         binding.addButton.setOnClickListener { showEditor(null) }
+        val t = PersianCalendarUtils.getTodayJalali()
+        val dow = arrayOf("دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه", "یکشنبه")[java.time.LocalDate.now().dayOfWeek.value - 1]
+        supportActionBar?.subtitle = "امروز: $dow ${PersianCalendarUtils.formatJalali(t.first, t.second, t.third)}"
+        setupGreeting()
         lifecycleScope.launch {
             dao.getAllFlow().collectLatest { people ->
                 cachedPeople = people
@@ -66,12 +71,58 @@ class MainActivity : AppCompatActivity() {
         else -> super.onOptionsItemSelected(item)
     }
 
+    private fun setupGreeting() {
+        binding.bottomNav.inflateMenu(R.menu.bottom_nav)
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            val greet = item.itemId == R.id.nav_greet
+            binding.greetPage.visibility = if (greet) android.view.View.VISIBLE else android.view.View.GONE
+            binding.birthdaysPage.visibility = if (greet) android.view.View.GONE else android.view.View.VISIBLE
+            binding.addButton.visibility = if (greet) android.view.View.GONE else android.view.View.VISIBLE
+            true
+        }
+        binding.greetTemplate.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            GreetingMessages.templates.indices.map { "پیام ${PersianCalendarUtils.toPersianDigits(it + 1)}" })
+        val refresh = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) = updatePreview()
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
+        binding.greetPerson.onItemSelectedListener = refresh
+        binding.greetTemplate.onItemSelectedListener = refresh
+        binding.btnCopy.setOnClickListener {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("greeting", currentMessage()))
+            toast("پیام کپی شد")
+        }
+        binding.btnWhatsapp.setOnClickListener { sendTo("com.whatsapp") }
+        binding.btnTelegram.setOnClickListener { sendTo("org.telegram.messenger") }
+    }
+    private fun currentMessage(): String {
+        val name = cachedPeople.getOrNull(binding.greetPerson.selectedItemPosition)?.name ?: "دوست"
+        return GreetingMessages.build(binding.greetTemplate.selectedItemPosition.coerceAtLeast(0), name)
+    }
+    private fun updatePreview() { binding.greetPreview.text = if (cachedPeople.isEmpty()) "ابتدا یک تولد اضافه کنید." else currentMessage() }
+    private fun sendTo(pkg: String) {
+        if (cachedPeople.isEmpty()) { toast("ابتدا یک تولد اضافه کنید"); return }
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, currentMessage())
+        }
+        try { startActivity(android.content.Intent(intent).setPackage(pkg)) }
+        catch (e: Exception) { startActivity(android.content.Intent.createChooser(intent, "ارسال تبریک")) }
+    }
+
     private fun render(people: List<Person>) {
         binding.emptyState.visibility = if (people.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
         binding.peopleList.visibility = if (people.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
         val today = PersianCalendarUtils.getTodayJalali()
         val sorted = sortPeopleByBirthday(people, today)
         adapter.submitList(sorted)
+        val sel = binding.greetPerson.selectedItemPosition
+        val names = sorted.map { it.person.name }
+        // greeting list follows the same order as cachedPeople, so keep it in sync
+        cachedPeople = sorted.map { it.person }
+        binding.greetPerson.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        if (sel in names.indices) binding.greetPerson.setSelection(sel)
+        updatePreview()
         val next = sorted.firstOrNull()
         if (next == null) {
             binding.nearestName.text = "هنوز تولدی ثبت نشده"
