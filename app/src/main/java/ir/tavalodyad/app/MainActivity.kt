@@ -1,6 +1,7 @@
 package ir.tavalodyad.app
 
 import android.net.Uri
+import androidx.activity.OnBackPressedCallback
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private val dao by lazy { AppDatabase.getInstance(this).personDao() }
     private lateinit var adapter: PersonAdapter
     private var cachedPeople: List<Person> = emptyList()
+    private var lastBackPressTime = 0L
 
     private val backupLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) lifecycleScope.launch { writeBackup(uri) }
@@ -52,6 +54,17 @@ class MainActivity : AppCompatActivity() {
         val dow = arrayOf("دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه", "یکشنبه")[java.time.LocalDate.now().dayOfWeek.value - 1]
         supportActionBar?.subtitle = "امروز: $dow ${PersianCalendarUtils.formatJalali(t.first, t.second, t.third)}"
         setupGreeting()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressTime < 2000) {
+                    finish()
+                } else {
+                    lastBackPressTime = now
+                    Toast.makeText(this@MainActivity, "برای خروج، یک بار دیگر دکمه بازگشت را بزنید", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
         lifecycleScope.launch {
             dao.getAllFlow().collectLatest { people ->
                 cachedPeople = people
@@ -96,11 +109,17 @@ class MainActivity : AppCompatActivity() {
         binding.btnWhatsapp.setOnClickListener { sendTo("com.whatsapp") }
         binding.btnTelegram.setOnClickListener { sendTo("org.telegram.messenger") }
     }
-    private fun currentMessage(): String {
-        val name = cachedPeople.getOrNull(binding.greetPerson.selectedItemPosition)?.name ?: "دوست"
-        return GreetingMessages.build(binding.greetTemplate.selectedItemPosition.coerceAtLeast(0), name)
+    private var lastKey = ""
+    private fun currentMessage(): String = binding.greetPreview.text?.toString().orEmpty()
+    private fun updatePreview() {
+        if (cachedPeople.isEmpty()) { lastKey = ""; binding.greetPreview.setText("ابتدا یک تولد اضافه کنید."); return }
+        val p = cachedPeople.getOrNull(binding.greetPerson.selectedItemPosition) ?: return
+        val t = binding.greetTemplate.selectedItemPosition.coerceAtLeast(0)
+        val key = "${p.id}|${p.name}|$t"
+        if (key == lastKey) return // keep user's edits
+        lastKey = key
+        binding.greetPreview.setText(GreetingMessages.build(t, p.name))
     }
-    private fun updatePreview() { binding.greetPreview.text = if (cachedPeople.isEmpty()) "ابتدا یک تولد اضافه کنید." else currentMessage() }
     private fun sendTo(pkg: String) {
         if (cachedPeople.isEmpty()) { toast("ابتدا یک تولد اضافه کنید"); return }
         val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
