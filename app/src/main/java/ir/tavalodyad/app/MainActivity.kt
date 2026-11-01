@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         menu.add(Menu.NONE, 1, 0, "پشتیبان در حافظه یا فایل")
         menu.add(Menu.NONE, 3, 1, "پشتیبان در Google Drive")
         menu.add(Menu.NONE, 2, 2, "بازیابی پشتیبان")
+        menu.add(Menu.NONE, 4, 3, "بازیابی از Google Drive")
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
@@ -104,13 +105,22 @@ class MainActivity : AppCompatActivity() {
         3 -> {
             AlertDialog.Builder(this)
                 .setTitle("پشتیبان در Google Drive")
-                .setMessage("در پنجرهٔ بعد، از منوی مکان‌ها Google Drive و حساب موردنظر را انتخاب کنید، سپس فایل را ذخیره کنید. در صورت نمایش‌ندادن Drive، برنامهٔ Google Drive را نصب و وارد حساب شوید.")
+                .setMessage("در پنجرهٔ بعد ممکن است ابتدا فایل‌های گوشی نمایش داده شوند. روی منوی سه‌خط بالای پنجره بزنید، Google Drive و حساب موردنظر را انتخاب کنید و سپس فایل را ذخیره کنید. اگر Drive نمایش داده نمی‌شود، برنامهٔ Google Drive را نصب کنید و وارد حساب شوید. پس از ذخیره، همگام‌سازی فایل را در Drive بررسی کنید.")
                 .setNegativeButton("انصراف", null)
                 .setPositiveButton("انتخاب محل ذخیره") { _, _ -> backupLauncher.launch("tavalodyad-backup.json") }
                 .show()
             true
         }
         2 -> { restoreLauncher.launch(arrayOf("application/json", "text/*")); true }
+        4 -> {
+            AlertDialog.Builder(this)
+                .setTitle("بازیابی از Google Drive")
+                .setMessage("در پنجرهٔ بعد ممکن است ابتدا فایل‌های گوشی نمایش داده شوند. روی منوی سه‌خط بالای پنجره بزنید، Google Drive و حساب موردنظر را انتخاب کنید و فایل پشتیبان JSON را باز کنید. اگر Drive نمایش داده نمی‌شود، برنامهٔ Google Drive را نصب کنید و وارد حساب شوید. پس از انتخاب فایل، می‌توانید اطلاعات را اضافه یا جایگزین کنید.")
+                .setNegativeButton("انصراف", null)
+                .setPositiveButton("انتخاب فایل پشتیبان") { _, _ -> restoreLauncher.launch(arrayOf("application/json", "text/*")) }
+                .show()
+            true
+        }
         else -> super.onOptionsItemSelected(item)
     }
 
