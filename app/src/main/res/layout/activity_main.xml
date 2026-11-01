@@ -11,6 +11,8 @@
                 <TextView android:id="@+id/nearestDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textColor="@android:color/white" android:textSize="14sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+        <EditText android:id="@+id/searchPeople" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="8dp" android:hint="جست‌وجوی نام" android:inputType="text" android:singleLine="true" />
+        <Spinner android:id="@+id/filterCategory" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
         <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
             <androidx.recyclerview.widget.RecyclerView android:id="@+id/peopleList" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:padding="12dp" />
             <TextView android:id="@+id/emptyState" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="center" android:gravity="center" android:padding="32dp" android:text="هنوز کسی را اضافه نکرده‌اید.
