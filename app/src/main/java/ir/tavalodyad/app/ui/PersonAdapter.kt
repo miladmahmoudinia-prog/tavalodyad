@@ -28,7 +28,7 @@ class PersonAdapter(
     inner class PersonHolder(private val binding: ItemPersonBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(info: BirthdayInfo) {
             val p = info.person
-            binding.personName.text = p.name
+            binding.personName.text = "${p.name}  ·  ${p.category}"
             binding.personDate.text = PersianCalendarUtils.formatJalali(p.jYear, p.jMonth, p.jDay)
             binding.personDays.text = if (info.daysLeft == 0L) "امروز تولدشه!" else "${PersianCalendarUtils.toPersianDigits(info.daysLeft)} روز تا تولد"
             binding.personAge.text = "سن جدید: ${PersianCalendarUtils.toPersianDigits(info.turningAge)} سالگی"

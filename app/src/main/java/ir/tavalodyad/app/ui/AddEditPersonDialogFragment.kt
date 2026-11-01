@@ -10,6 +10,7 @@ import android.widget.NumberPicker
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import ir.tavalodyad.app.data.Person
+import ir.tavalodyad.app.data.Categories
 import ir.tavalodyad.app.databinding.DialogDatePickerBinding
 import ir.tavalodyad.app.databinding.DialogPersonBinding
 import ir.tavalodyad.app.util.PersianCalendarUtils
@@ -35,6 +36,8 @@ class AddEditPersonDialogFragment : DialogFragment() {
         binding.dialogTitle.text = if (existing == null) "افزودن تولد" else "ویرایش مشخصات"
         binding.inputName.setText(existing?.name.orEmpty())
         binding.inputNote.setText(existing?.note.orEmpty())
+        binding.categorySpinner.adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, Categories.values)
+        binding.categorySpinner.setSelection(Categories.values.indexOf(existing?.category ?: "سایر").coerceAtLeast(0))
         binding.dateText.text = faDate()
 
         binding.dateBox.setOnClickListener {
@@ -84,7 +87,7 @@ class AddEditPersonDialogFragment : DialogFragment() {
                 binding.formError.text = "نام را وارد کنید"
                 binding.formError.visibility = android.view.View.VISIBLE
             } else {
-                onSave?.invoke(Person(existing?.id ?: 0L, name, y, m, d, binding.inputNote.text?.toString()?.trim()?.ifEmpty { null }))
+                onSave?.invoke(Person(existing?.id ?: 0L, name, y, m, d, binding.inputNote.text?.toString()?.trim()?.ifEmpty { null }, Categories.values[binding.categorySpinner.selectedItemPosition]))
                 dialog.dismiss()
             }
         }
