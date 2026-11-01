@@ -19,6 +19,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ir.tavalodyad.app.MainActivity
+import ir.tavalodyad.app.R
 import ir.tavalodyad.app.data.AppDatabase
 import ir.tavalodyad.app.util.PersianCalendarUtils
 import ir.tavalodyad.app.util.computeBirthdayInfo
@@ -50,7 +51,7 @@ class BirthdayReminderWorker(context: Context, params: WorkerParameters) : Corou
             if (preferences.getString(key, null) == currentDate) continue
             val message = if (days == 0L) "امروز تولد ${person.name} است 🎉" else "فردا تولد ${person.name} است 🎂"
             val notification = NotificationCompat.Builder(applicationContext, CHANNEL)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_notification_birthday)
                 .setContentTitle("تولدیاد")
                 .setContentText(message)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(message))
