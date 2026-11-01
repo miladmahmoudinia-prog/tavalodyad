@@ -2,6 +2,7 @@ package ir.tavalodyad.app.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.ColumnInfo
 
 @Entity(tableName = "people")
 data class Person(
@@ -10,5 +11,6 @@ data class Person(
     val jYear: Int,
     val jMonth: Int,
     val jDay: Int,
-    val note: String? = null
+    val note: String? = null,
+    @ColumnInfo(defaultValue = "'سایر'") val category: String = "سایر"
 )
