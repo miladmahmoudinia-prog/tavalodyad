@@ -13,12 +13,15 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import ir.tavalodyad.app.data.AppDatabase
 import ir.tavalodyad.app.data.Person
+import ir.tavalodyad.app.data.Categories
+import androidx.core.widget.doAfterTextChanged
 import ir.tavalodyad.app.databinding.ActivityMainBinding
 import ir.tavalodyad.app.ui.AddEditPersonDialogFragment
 import ir.tavalodyad.app.ui.PersonAdapter
 import ir.tavalodyad.app.util.GreetingMessages
 import ir.tavalodyad.app.util.PersianCalendarUtils
 import ir.tavalodyad.app.util.sortPeopleByBirthday
+import ir.tavalodyad.app.reminders.BirthdayReminderWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -33,6 +36,10 @@ class MainActivity : AppCompatActivity() {
     private var cachedPeople: List<Person> = emptyList()
     private var lastBackPressTime = 0L
 
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) BirthdayReminderWorker.checkNow(this)
+    }
+
     private val backupLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) lifecycleScope.launch { writeBackup(uri) }
     }
@@ -42,6 +49,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        BirthdayReminderWorker.schedule(this)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            BirthdayReminderWorker.checkNow(this)
+        }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -50,6 +63,12 @@ class MainActivity : AppCompatActivity() {
         binding.peopleList.layoutManager = LinearLayoutManager(this)
         binding.peopleList.adapter = adapter
         binding.addButton.setOnClickListener { showEditor(null) }
+        binding.filterCategory.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf(Categories.ALL) + Categories.values)
+        binding.searchPeople.doAfterTextChanged { renderList() }
+        binding.filterCategory.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) = renderList()
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        }
         val t = PersianCalendarUtils.getTodayJalali()
         val dow = arrayOf("دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه", "یکشنبه")[java.time.LocalDate.now().dayOfWeek.value - 1]
         supportActionBar?.subtitle = "امروز: $dow ${PersianCalendarUtils.formatJalali(t.first, t.second, t.third)}"
@@ -69,17 +88,28 @@ class MainActivity : AppCompatActivity() {
             dao.getAllFlow().collectLatest { people ->
                 cachedPeople = people
                 render(people)
+                BirthdayReminderWorker.checkNow(this@MainActivity)
             }
         }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(Menu.NONE, 1, 0, "پشتیبان‌گیری")
-        menu.add(Menu.NONE, 2, 1, "بازیابی")
+        menu.add(Menu.NONE, 1, 0, "پشتیبان در حافظه یا فایل")
+        menu.add(Menu.NONE, 3, 1, "پشتیبان در Google Drive")
+        menu.add(Menu.NONE, 2, 2, "بازیابی پشتیبان")
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         1 -> { backupLauncher.launch("tavalodyad-backup.json"); true }
+        3 -> {
+            AlertDialog.Builder(this)
+                .setTitle("پشتیبان در Google Drive")
+                .setMessage("در پنجرهٔ بعد، از منوی مکان‌ها Google Drive و حساب موردنظر را انتخاب کنید، سپس فایل را ذخیره کنید. در صورت نمایش‌ندادن Drive، برنامهٔ Google Drive را نصب و وارد حساب شوید.")
+                .setNegativeButton("انصراف", null)
+                .setPositiveButton("انتخاب محل ذخیره") { _, _ -> backupLauncher.launch("tavalodyad-backup.json") }
+                .show()
+            true
+        }
         2 -> { restoreLauncher.launch(arrayOf("application/json", "text/*")); true }
         else -> super.onOptionsItemSelected(item)
     }
@@ -130,15 +160,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(people: List<Person>) {
-        binding.emptyState.visibility = if (people.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
-        binding.peopleList.visibility = if (people.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
         val today = PersianCalendarUtils.getTodayJalali()
         val sorted = sortPeopleByBirthday(people, today)
-        adapter.submitList(sorted)
         val sel = binding.greetPerson.selectedItemPosition
         val names = sorted.map { it.person.name }
         // greeting list follows the same order as cachedPeople, so keep it in sync
         cachedPeople = sorted.map { it.person }
+        renderList()
         binding.greetPerson.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
         if (sel in names.indices) binding.greetPerson.setSelection(sel)
         updatePreview()
@@ -151,6 +179,18 @@ class MainActivity : AppCompatActivity() {
             val countdown = if (next.daysLeft == 0L) "امروز تولدشه!" else "${PersianCalendarUtils.toPersianDigits(next.daysLeft)} روز تا تولد"
             binding.nearestDetails.text = "${PersianCalendarUtils.formatJalali(next.person.jYear, next.person.jMonth, next.person.jDay)}  •  $countdown"
         }
+    }
+
+    private fun renderList() {
+        val query = binding.searchPeople.text?.toString()?.trim().orEmpty().replace('ي', 'ی').replace('ك', 'ک')
+        val category = binding.filterCategory.selectedItem as? String ?: Categories.ALL
+        val filtered = cachedPeople.filter { person ->
+            person.name.replace('ي', 'ی').replace('ك', 'ک').contains(query, ignoreCase = true) && (category == Categories.ALL || person.category == category)
+        }
+        binding.emptyState.visibility = if (filtered.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        binding.peopleList.visibility = if (filtered.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+        binding.emptyState.text = if (cachedPeople.isEmpty()) "هنوز کسی را اضافه نکرده‌اید.\nبرای ثبت اولین تولد، دکمهٔ + را بزنید." else "موردی پیدا نشد"
+        adapter.submitList(sortPeopleByBirthday(filtered, PersianCalendarUtils.getTodayJalali()))
     }
 
     private fun showEditor(person: Person?) {
@@ -168,12 +208,14 @@ class MainActivity : AppCompatActivity() {
     private suspend fun writeBackup(uri: Uri) {
         try {
             val json = JSONArray()
-            cachedPeople.forEach { p -> json.put(JSONObject().apply {
+            val people = withContext(Dispatchers.IO) { dao.getAll() }
+            people.forEach { p -> json.put(JSONObject().apply {
                 put("id", p.id); put("name", p.name); put("jYear", p.jYear); put("jMonth", p.jMonth); put("jDay", p.jDay)
+                put("category", p.category)
                 if (p.note != null) put("note", p.note)
             }) }
             withContext(Dispatchers.IO) { contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { it.write(json.toString(2)) } ?: error("فایل برای نوشتن باز نشد") }
-            toast("پشتیبان با موفقیت ذخیره شد")
+            toast("فایل پشتیبان به محل انتخاب‌شده تحویل داده شد")
         } catch (e: Exception) { toast("ذخیرهٔ پشتیبان ناموفق بود: ${e.localizedMessage}") }
     }
 
@@ -189,7 +231,8 @@ class MainActivity : AppCompatActivity() {
                         val currentJalaliYear = PersianCalendarUtils.getTodayJalali().first
                         require(year in (currentJalaliYear - 120)..currentJalaliYear) { "سال تولد نامعتبر در فایل پشتیبان" }
                         require(month in 1..12 && day in 1..PersianCalendarUtils.jalaliMonthLength(year, month)) { "تاریخ نامعتبر در فایل پشتیبان" }
-                        add(Person(name = obj.getString("name"), jYear = year, jMonth = month, jDay = day, note = obj.optString("note").takeIf { it.isNotBlank() }))
+                        val category = obj.optString("category", "سایر").takeIf { it in Categories.values } ?: "سایر"
+                        add(Person(name = obj.getString("name"), jYear = year, jMonth = month, jDay = day, note = obj.optString("note").takeIf { it.isNotBlank() }, category = category))
                     }
                 }
                 withContext(Dispatchers.Main) {
@@ -198,7 +241,7 @@ class MainActivity : AppCompatActivity() {
                         .setMessage("جایگزینی لیست فعلی یا افزودن به آن؟")
                         .setNegativeButton("انصراف", null)
                         .setNeutralButton("افزودن") { _, _ -> lifecycleScope.launch(Dispatchers.IO) { people.forEach { dao.insert(it) }; toast("بازیابی انجام شد") } }
-                        .setPositiveButton("جایگزینی") { _, _ -> lifecycleScope.launch(Dispatchers.IO) { dao.deleteAll(); people.forEach { dao.insert(it) }; toast("لیست جایگزین شد") } }
+                        .setPositiveButton("جایگزینی") { _, _ -> lifecycleScope.launch(Dispatchers.IO) { dao.replaceAll(people); toast("لیست جایگزین شد") } }
                         .show()
                 }
             } catch (e: Exception) { withContext(Dispatchers.Main) { toast("فایل پشتیبان معتبر نیست: ${e.localizedMessage}") } }
