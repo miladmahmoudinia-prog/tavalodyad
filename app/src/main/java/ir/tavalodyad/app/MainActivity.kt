@@ -15,6 +15,8 @@ import ir.tavalodyad.app.data.AppDatabase
 import ir.tavalodyad.app.data.Person
 import ir.tavalodyad.app.data.Categories
 import androidx.core.widget.doAfterTextChanged
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import ir.tavalodyad.app.databinding.ActivityMainBinding
 import ir.tavalodyad.app.ui.AddEditPersonDialogFragment
 import ir.tavalodyad.app.ui.PersonAdapter
@@ -35,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: PersonAdapter
     private var cachedPeople: List<Person> = emptyList()
     private var lastBackPressTime = 0L
+    private var selectedCategory = Categories.ALL
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) BirthdayReminderWorker.checkNow(this)
@@ -63,12 +66,8 @@ class MainActivity : AppCompatActivity() {
         binding.peopleList.layoutManager = LinearLayoutManager(this)
         binding.peopleList.adapter = adapter
         binding.addButton.setOnClickListener { showEditor(null) }
-        binding.filterCategory.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf(Categories.ALL) + Categories.values)
+        setupCategoryFilters()
         binding.searchPeople.doAfterTextChanged { renderList() }
-        binding.filterCategory.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) = renderList()
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
-        }
         val t = PersianCalendarUtils.getTodayJalali()
         val dow = arrayOf("دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه", "یکشنبه")[java.time.LocalDate.now().dayOfWeek.value - 1]
         supportActionBar?.subtitle = "امروز: $dow ${PersianCalendarUtils.formatJalali(t.first, t.second, t.third)}"
@@ -191,9 +190,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupCategoryFilters() {
+        (listOf(Categories.ALL) + Categories.values).forEach { category ->
+            val chip = Chip(this).apply {
+                id = android.view.View.generateViewId()
+                text = if (category == Categories.ALL) "همه" else category
+                tag = category
+                isCheckable = true
+                isCheckedIconVisible = false
+                val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+                val purple = androidx.core.content.ContextCompat.getColor(context, R.color.purple_700)
+                val white = androidx.core.content.ContextCompat.getColor(context, android.R.color.white)
+                chipBackgroundColor = android.content.res.ColorStateList(states, intArrayOf(purple, white))
+                setTextColor(android.content.res.ColorStateList(states, intArrayOf(white, purple)))
+                chipStrokeColor = android.content.res.ColorStateList(states, intArrayOf(purple, androidx.core.content.ContextCompat.getColor(context, R.color.card_stroke)))
+                chipStrokeWidth = resources.displayMetrics.density
+                minHeight = (40 * resources.displayMetrics.density).toInt()
+            }
+            binding.filterCategories.addView(chip)
+            if (category == selectedCategory) chip.isChecked = true
+        }
+        binding.filterCategories.setOnCheckedStateChangeListener { group: ChipGroup, checkedIds: List<Int> ->
+            val chip = checkedIds.firstOrNull()?.let { group.findViewById<Chip>(it) }
+            selectedCategory = chip?.tag as? String ?: Categories.ALL
+            renderList()
+        }
+    }
+
     private fun renderList() {
         val query = binding.searchPeople.text?.toString()?.trim().orEmpty().replace('ي', 'ی').replace('ك', 'ک')
-        val category = binding.filterCategory.selectedItem as? String ?: Categories.ALL
+        val category = selectedCategory
         val filtered = cachedPeople.filter { person ->
             person.name.replace('ي', 'ی').replace('ك', 'ک').contains(query, ignoreCase = true) && (category == Categories.ALL || person.category == category)
         }
