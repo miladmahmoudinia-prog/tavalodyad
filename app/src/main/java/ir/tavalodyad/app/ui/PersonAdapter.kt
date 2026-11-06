@@ -3,11 +3,9 @@ package ir.tavalodyad.app.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import ir.tavalodyad.app.R
 import ir.tavalodyad.app.data.Person
 import ir.tavalodyad.app.databinding.ItemPersonBinding
 import ir.tavalodyad.app.util.BirthdayInfo
@@ -34,17 +32,8 @@ class PersonAdapter(
             binding.personAge.text = "سن جدید: ${PersianCalendarUtils.toPersianDigits(info.turningAge)} سالگی"
             binding.personNote.text = p.note.orEmpty()
             binding.personNote.visibility = if (p.note.isNullOrBlank()) View.GONE else View.VISIBLE
-            binding.personMore.setOnClickListener { view ->
-                PopupMenu(view.context, view).apply {
-                    menu.add(0, 1, 0, "ویرایش")
-                    menu.add(0, 2, 1, "حذف")
-                    setOnMenuItemClickListener { item -> when (item.itemId) {
-                        1 -> { onEdit(p); true }
-                        2 -> { onDelete(p); true }
-                        else -> false
-                    } }
-                }.show()
-            }
+            binding.personEdit.setOnClickListener { onEdit(p) }
+            binding.personDelete.setOnClickListener { onDelete(p) }
         }
     }
 }
