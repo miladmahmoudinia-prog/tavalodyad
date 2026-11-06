@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="6dp" app:cardCornerRadius="16dp" app:cardElevation="2dp" app:strokeColor="@color/card_stroke" app:strokeWidth="1dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingTop="12dp" android:paddingEnd="8dp" android:paddingBottom="12dp">
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="6dp" android:layout_marginVertical="4dp" app:cardCornerRadius="14dp" app:cardElevation="1dp" app:strokeColor="@color/card_stroke" app:strokeWidth="1dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="8dp" android:paddingEnd="4dp" android:paddingBottom="8dp">
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:id="@+id/personName" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/text_primary" android:textSize="18sp" android:textStyle="bold" />
-            <TextView android:id="@+id/personDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textColor="@color/text_secondary" android:textSize="14sp" />
-            <TextView android:id="@+id/personDays" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:textColor="@color/pink_700" android:textSize="14sp" android:textStyle="bold" />
-            <TextView android:id="@+id/personAge" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/text_secondary" android:textSize="13sp" />
-            <TextView android:id="@+id/personNote" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <TextView android:id="@+id/personName" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/text_primary" android:textSize="17sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/personDate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text_secondary" android:textSize="13sp" />
+                <TextView android:id="@+id/personAge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_secondary" android:textSize="13sp" />
+            </LinearLayout>
+            <TextView android:id="@+id/personDays" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/pink_700" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/personNote" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:textColor="@color/text_secondary" android:textSize="13sp" />
         </LinearLayout>
-        <ImageButton android:id="@+id/personMore" android:layout_width="48dp" android:layout_height="48dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="گزینه‌های شخص" android:src="@android:drawable/ic_menu_more" app:tint="@color/text_secondary" />
+        <ImageButton android:id="@+id/personEdit" android:layout_width="48dp" android:layout_height="48dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="ویرایش شخص" android:padding="13dp" android:src="@drawable/ic_person_edit" app:tint="@color/purple_700" />
+        <ImageButton android:id="@+id/personDelete" android:layout_width="48dp" android:layout_height="48dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="حذف شخص" android:padding="13dp" android:src="@drawable/ic_person_delete" app:tint="@color/pink_700" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
