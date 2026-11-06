@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         menu.add(Menu.NONE, 3, 1, "پشتیبان در Google Drive")
         menu.add(Menu.NONE, 2, 2, "بازیابی پشتیبان")
         menu.add(Menu.NONE, 4, 3, "بازیابی از Google Drive")
+        menu.add(Menu.NONE, 5, 4, "تنظیمات یادآوری")
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
         2 -> { restoreLauncher.launch(arrayOf("application/json", "text/*")); true }
+        5 -> { showReminderSettings(); true }
         4 -> {
             AlertDialog.Builder(this)
                 .setTitle("بازیابی از Google Drive")
@@ -121,6 +123,58 @@ class MainActivity : AppCompatActivity() {
             true
         }
         else -> super.onOptionsItemSelected(item)
+    }
+
+    private fun showReminderSettings() {
+        val settings = getSharedPreferences("reminder_settings", MODE_PRIVATE)
+        val density = resources.displayMetrics.density
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val padding = (24 * density).toInt()
+            setPadding(padding, 0, padding, 0)
+        }
+        val enabled = android.widget.Switch(this).apply {
+            text = "فعال‌سازی یادآوری‌ها"
+            isChecked = settings.getBoolean("enabled", true)
+        }
+        val birthday = android.widget.CheckBox(this).apply {
+            text = "یادآوری در روز تولد"
+            isChecked = settings.getBoolean("birthday_enabled", true)
+        }
+        val label = android.widget.TextView(this).apply { text = "تعداد روز پیش از تولد" }
+        val days = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, (1..30).map { "${PersianCalendarUtils.toPersianDigits(it)} روز قبل" })
+            setSelection(settings.getInt("advance_days", 1).coerceIn(1, 30) - 1)
+        }
+        var hour = settings.getInt("hour", 9)
+        var minute = settings.getInt("minute", 0)
+        val time = android.widget.Button(this)
+        fun updateTime() { time.text = "ساعت یادآوری: ${String.format(java.util.Locale.US, "%02d:%02d", hour, minute)}" }
+        updateTime()
+        time.setOnClickListener {
+            android.app.TimePickerDialog(this, { _, selectedHour, selectedMinute ->
+                hour = selectedHour
+                minute = selectedMinute
+                updateTime()
+            }, hour, minute, true).show()
+        }
+        listOf(enabled, birthday, label, days, time).forEach { container.addView(it) }
+        val hint = android.widget.TextView(this).apply { text = "یادآوری بدون اینترنت کار می‌کند؛ زمان نمایش ممکن است به‌دلیل محدودیت باتری گوشی با تأخیر باشد." }
+        container.addView(hint)
+        AlertDialog.Builder(this).setTitle("تنظیمات یادآوری")
+            .setView(container)
+            .setNegativeButton("انصراف", null)
+            .setPositiveButton("ذخیره") { _, _ ->
+                settings.edit().putBoolean("enabled", enabled.isChecked)
+                    .putBoolean("birthday_enabled", birthday.isChecked)
+                    .putInt("advance_days", days.selectedItemPosition + 1)
+                    .putInt("hour", hour).putInt("minute", minute).apply()
+                BirthdayReminderWorker.schedule(this)
+                BirthdayReminderWorker.checkNow(this)
+                if (enabled.isChecked && android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }.show()
     }
 
     private fun setupGreeting() {
